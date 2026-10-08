@@ -80,3 +80,25 @@ Fontes:
 - https://github.com/kennylevinsen/greetd/blob/master/config.toml
 - https://docs.noctalia.dev/greeter/troubleshooting/
 - https://github.com/noctalia-dev/noctalia-greeter/blob/main/PACKAGING.md
+
+### Fedora 44: usuario de servico correto
+
+O RPM do Fedora 44 fornece o usuario de servico `greetd`, em vez do usuario
+`greeter` do exemplo upstream. Se os logs mostrarem
+`configured default session user 'greeter' not found`, use
+`getent passwd greetd` para conferir sua existencia e altere
+`[default_session].user` para `"greetd"`.
+
+O diretorio `/var/lib/noctalia-greeter` deve ser propriedade do mesmo usuario:
+
+```sh
+getent passwd greetd
+sudo sed -i 's/^user = "greeter"$/user = "greetd"/' /etc/greetd/config.toml
+sudo install -d -o greetd -g greetd -m 0750 /var/lib/noctalia-greeter
+printf 'd /var/lib/noctalia-greeter 0750 greetd greetd - -\n' | sudo tee /etc/tmpfiles.d/noctalia-greeter.conf
+sudo systemctl reset-failed greetd
+sudo systemctl start greetd
+```
+
+O bootstrap da branch agora detecta o usuario existente. Os comandos acima
+reparam manualmente sistemas que executaram as versoes anteriores.
