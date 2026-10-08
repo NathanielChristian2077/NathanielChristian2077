@@ -81,9 +81,13 @@ if [[ "$mode" == "--greeter" ]]; then
   if [[ -f "$config" ]]; then
     sudo cp -a "$config" "${config}.bak.$(date +%Y%m%d%H%M%S)"
   fi
-  # On a fresh Fedora minimum install this replaces only the packaged
-  # agreety template. The backup allows restoration if needed.
-  printf '[default_session]\ncommand = "%s"\nuser = "greeter"\n' "$wrapper" | sudo tee "$config" >/dev/null
+  # The greetd daemon requires an explicit terminal section on Fedora.
+  # The initial bootstrap omitted this and triggered "no terminal specified".
+  # This is only for a fresh/known greetd template; the existing file was backed up.
+  printf '[terminal]\nvt = 1\n\n[default_session]\ncommand = "%s"\nuser = "greeter"\n' "$wrapper" | sudo tee "$config" >/dev/null
+  # Some third-party RPM builds do not initialize the Noctalia Greeter state.
+  # Upstream requires this directory to be owned by the greetd session user.
+  sudo install -d -m 0750 -o greeter -g greeter /var/lib/noctalia-greeter
   sudo systemctl enable greetd.service
   sudo systemctl set-default graphical.target
   say "greetd habilitado PARA O PROXIMO BOOT; nao iniciaremos agora para preservar seu TTY."
