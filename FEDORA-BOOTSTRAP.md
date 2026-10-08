@@ -45,3 +45,38 @@ Drivers NVIDIA proprietários, configuração de monitores/rotação, Steam/Prot
 - https://docs.noctalia.dev/noctalia/getting-started/installation/
 - https://docs.noctalia.dev/noctalia/getting-started/running-the-shell/
 - https://docs.noctalia.dev/greeter/installation/
+
+### Correção de um erro nas primeiras versões do bootstrap
+
+A versão inicial escrevia apenas `[default_session]` e por isso o greetd falhava com
+`no terminal specified`. O bootstrap foi corrigido para incluir `[terminal] vt = 1`
+e inicializar o diretório de estado. Se você **já executou** a versão anterior,
+não precisa repetir a instalação; corrija o arquivo existente:
+
+```toml
+[terminal]
+vt = 1
+
+[default_session]
+command = "/usr/bin/noctalia-greeter-session"
+user = "greeter"
+```
+
+Antes de editar, faça backup de `/etc/greetd/config.toml`. Em seguida,
+prepare o diretório e teste a partir do TTY3:
+
+```bash
+sudo install -d -m 0750 -o greeter -g greeter /var/lib/noctalia-greeter
+sudo systemctl reset-failed greetd
+sudo systemctl start greetd
+sudo systemctl status greetd --no-pager
+```
+
+Se ficar ativo, mude para Ctrl+Alt+F1 para testar. Só então execute
+`sudo systemctl enable greetd` e `sudo systemctl set-default graphical.target`.
+Não reinicie se os erros persistirem.
+
+Fontes:
+- https://github.com/kennylevinsen/greetd/blob/master/config.toml
+- https://docs.noctalia.dev/greeter/troubleshooting/
+- https://github.com/noctalia-dev/noctalia-greeter/blob/main/PACKAGING.md
