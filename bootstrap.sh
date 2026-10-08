@@ -81,13 +81,20 @@ if [[ "$mode" == "--greeter" ]]; then
   if [[ -f "$config" ]]; then
     sudo cp -a "$config" "${config}.bak.$(date +%Y%m%d%H%M%S)"
   fi
-  # The greetd daemon requires an explicit terminal section on Fedora.
-  # The initial bootstrap omitted this and triggered "no terminal specified".
-  # This is only for a fresh/known greetd template; the existing file was backed up.
-  printf '[terminal]\nvt = 1\n\n[default_session]\ncommand = "%s"\nuser = "greeter"\n' "$wrapper" | sudo tee "$config" >/dev/null
-  # Some third-party RPM builds do not initialize the Noctalia Greeter state.
-  # Upstream requires this directory to be owned by the greetd session user.
-  sudo install -d -m 0750 -o greeter -g greeter /var/lib/noctalia-greeter
+  # Fedora greetd package provides the "greetd" account, not "greeter".
+  # Reuse whichever designated greeter account the system actually provides.
+  if getent passwd greetd >/dev/null; then
+    greeter_user=greetd
+  elif getent passwd greeter >/dev/null; then
+    greeter_user=greeter
+  else
+    fail "Nao existe usuario de servico greetd/greeter. Verifique a instalacao do greetd."
+  fi
+  printf '[terminal]\nvt = 1\n\n[default_session]\ncommand = "%s"\nuser = "%s"\n' "$wrapper" "$greeter_user" | sudo tee "$config" >/dev/null
+  sudo install -d -m 0750 -o "$greeter_user" -g "$greeter_user" /var/lib/noctalia-greeter
+  # Override any vendor tmpfiles rule that hardcodes a missing "greeter" user.
+  sudo install -d -m 0755 /etc/tmpfiles.d
+  printf 'd /var/lib/noctalia-greeter 0750 %s %s - -\n' "$greeter_user" "$greeter_user" | sudo tee /etc/tmpfiles.d/noctalia-greeter.conf >/dev/null
   sudo systemctl enable greetd.service
   sudo systemctl set-default graphical.target
   say "greetd habilitado PARA O PROXIMO BOOT; nao iniciaremos agora para preservar seu TTY."
